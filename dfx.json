@@ -1,0 +1,10 @@
+{
+    "canisters": {
+        "tornado": {
+            "build": "",
+            "candid": "build/tornado.did",
+            "wasm": "build/tornado.wasm",
+            "type": "custom"
+        }
+    }
+}

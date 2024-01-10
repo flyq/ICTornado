@@ -1,4 +1,5 @@
 use candid::{CandidType, Deserialize};
+use ic_exports::ic_cdk::api::call::RejectionCode;
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -13,4 +14,16 @@ pub enum Error {
 
     #[error("stable pair not found: {0}")]
     StableError(String),
+
+    #[error("canister call error: {0}")]
+    CallError(String),
+
+    #[error("invalid public key: {0}")]
+    InvalidPublicKey(String),
+}
+
+impl From<(RejectionCode, String)> for Error {
+    fn from(e: (RejectionCode, String)) -> Self {
+        Self::CallError(format!("reject code is {:?}, err msg is {}", e.0, e.1))
+    }
 }

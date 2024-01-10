@@ -11,8 +11,16 @@ export-api = []
 
 [dependencies]
 candid = "0.9"
+ethers-core = "2.0"
+hex = "0.4"
 ic-canister = { git = "https://github.com/infinity-swap/canister-sdk", package = "ic-canister", tag = "v0.12.x" }
 ic-exports = { git = "https://github.com/infinity-swap/canister-sdk", package = "ic-exports", tag = "v0.12.x" }
 ic-stable-structures = { version = "0.6" }
 serde = "1.0"
+tiny-keccak = "2.0"
 thiserror = "1.0"
+
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["test-util", "macros"] }
+ethers-signers = "2.0"

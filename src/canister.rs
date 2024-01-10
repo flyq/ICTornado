@@ -4,6 +4,7 @@ use ic_exports::candid::Principal;
 use ic_exports::ic_kit::ic;
 
 use crate::error::{Error, Result};
+use crate::state::ecdsa::{CoinType, EcdsaKeyIds, Signer};
 use crate::state::{Settings, State};
 
 /// A canister to transfer funds between IC token canisters and EVM canister contracts.
@@ -23,6 +24,7 @@ impl TornadoCanister {
     pub fn init(&mut self, init_data: InitData) {
         let settings = Settings {
             owner: init_data.owner,
+            ecdsa_env: init_data.ecdsa_env
         };
 
         self.state.reset(settings);
@@ -45,6 +47,18 @@ impl TornadoCanister {
         Ok(())
     }
 
+    #[update]
+    pub async fn get_address(&mut self, coin_type: CoinType) -> Result<Address> {
+         let caller = ic::caller();
+        let signer = match self.state.signers.get(ic::caller()) {
+            Some(s) => s,
+            None => {
+                let s = Signer::new(EcdsaKeyIds::, path)
+            }
+        }
+
+    }
+
     fn check_owner(&self, principal: Principal) -> Result<()> {
         let owner = self.state.config.get_owner();
         if owner == principal || owner == Principal::anonymous() {
@@ -61,8 +75,9 @@ impl TornadoCanister {
 }
 
 /// Minter canister initialization data.
-#[derive(Debug, Deserialize, CandidType, Clone, Copy)]
+#[derive(Deserialize, CandidType)]
 pub struct InitData {
     /// Principal of canister's owner.
     pub owner: Principal,
+    pub ecdsa_env: EcdsaKeyIds,
 }

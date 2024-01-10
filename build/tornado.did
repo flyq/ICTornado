@@ -1,7 +1,15 @@
-type Error = variant { Internal : text; NotAuthorized; StableError : text };
+type Error = variant {
+  Internal : text;
+  NotAuthorized;
+  CallError : text;
+  StableError : text;
+};
 type InitData = record { owner : principal };
 type Result = variant { Ok; Err : Error };
+type Result_1 = variant { Ok : text; Err : Error };
 service : (InitData) -> {
   get_owner : () -> (principal) query;
   set_owner : (principal) -> (Result);
+  test_get_pubkey : () -> (Result_1);
+  test_get_sign : () -> (Result_1);
 }

@@ -1,13 +1,15 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
 
-use candid::{CandidType, Decode, Deserialize, Encode, Principal};
+use candid::{CandidType, Deserialize, Principal};
 use ic_stable_structures::memory_manager::VirtualMemory;
 use ic_stable_structures::storable::Bound;
 use ic_stable_structures::{DefaultMemoryImpl, StableCell, Storable};
 
+use super::ecdsa::EcdsaKeyIds;
 use super::Settings;
-use crate::state::{CONFIG_MEMORY_ID, MEMORY_MANAGER};
+use crate::error::{Error, Result};
+use crate::state::{decode, encode, CONFIG_MEMORY_ID, MEMORY_MANAGER};
 
 /// Minter canister configuration.
 #[derive(Default)]
@@ -18,6 +20,7 @@ impl Config {
     pub fn reset(&mut self, settings: Settings) {
         let new_data = ConfigData {
             owner: settings.owner,
+            ..Default::default()
         };
         CONFIG_CELL.with(|cell| {
             cell.borrow_mut()
@@ -31,23 +34,31 @@ impl Config {
         CONFIG_CELL.with(|cell| cell.borrow().get().owner)
     }
 
+    pub fn get_ecdsa_env(&self) -> EcdsaKeyIds {
+        CONFIG_CELL.with(|c| c.borrow().get().ecdsa_env)
+    }
+
     /// Sets a new principal for canister owner.
-    pub fn set_owner(&mut self, owner: Principal) {
+    pub fn set_owner(&mut self, owner: Principal) -> Result<()> {
+        let ecdsa_env = self.get_ecdsa_env();
         CONFIG_CELL
-            .with(|cell| cell.borrow_mut().set(ConfigData { owner }))
-            .expect("failed to update config stable memory data");
+            .with(|cell| cell.borrow_mut().set(ConfigData { owner, ecdsa_env }))
+            .map_err(|e| Error::StableError(format!("set_owner error is {:?}", e)))?;
+        Ok(())
     }
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, CandidType, PartialEq, Eq)]
+#[derive(Deserialize, CandidType)]
 pub struct ConfigData {
     pub owner: Principal,
+    pub ecdsa_env: EcdsaKeyIds,
 }
 
 impl Default for ConfigData {
     fn default() -> Self {
         Self {
             owner: Principal::anonymous(),
+            ecdsa_env: EcdsaKeyIds::TestKeyLocalDevelopment,
         }
     }
 }
@@ -74,12 +85,4 @@ thread_local! {
         RefCell::new(StableCell::init(MEMORY_MANAGER.with(|m| m.borrow().get(CONFIG_MEMORY_ID)), ConfigData::default())
             .expect("stable memory config initialization failed"))
     };
-}
-
-pub fn encode(item: &impl CandidType) -> Vec<u8> {
-    Encode!(item).expect("failed to encode item to candid")
-}
-
-pub fn decode<'a, T: CandidType + Deserialize<'a>>(bytes: &'a [u8]) -> T {
-    Decode!(bytes, T).expect("failed to decode item from candid")
 }

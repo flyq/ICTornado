@@ -1,4 +1,6 @@
 use candid::{CandidType, Deserialize};
+use ethers_core::types::transaction::eip2718::TypedTransaction;
+use ethers_core::types::{Address, TransactionRequest, U64};
 use ic_canister::{generate_idl, init, query, update, Canister, Idl, PreUpdate};
 use ic_exports::candid::Principal;
 use ic_exports::ic_kit::ic;
@@ -78,6 +80,43 @@ impl TornadoCanister {
             }
             CoinType::Btc => Err(Error::Internal("not suppported".to_string())),
         }
+    }
+
+    #[update]
+    pub async fn test_transfer_eth(&self) -> Result<String> {
+        let signer = self
+            .state
+            .signers
+            .get(ic::caller())
+            .ok_or(Error::UserNotInitialized)?;
+
+        let wallet = EthWallet::new(signer, 11155111)?;
+
+        let tx: TypedTransaction = TransactionRequest {
+            from: Some(
+                "0x231c917390726843b85004912c813E8311365592"
+                    .parse::<Address>()
+                    .unwrap()
+                    .into(),
+            ),
+            to: Some(
+                "0xbd70d89667A3E1bD341AC235259c5f2dDE8172A9"
+                    .parse::<Address>()
+                    .unwrap()
+                    .into(),
+            ),
+            value: Some(1_000_000_000.into()),
+            gas: Some(21000.into()),
+            nonce: Some(0.into()),
+            gas_price: Some(21_000_000_000u128.into()),
+            data: None,
+            chain_id: Some(U64::from(11155111)),
+        }
+        .into();
+        let signature = wallet.sign_transaction(&tx).await?;
+        let bytes = tx.rlp_signed(&signature);
+
+        Ok(format!("{}", bytes))
     }
 
     fn check_owner(&self, principal: Principal) -> Result<()> {

@@ -20,4 +20,5 @@ service : (InitData) -> {
   get_owner : () -> (principal) query;
   init_user : () -> (Result);
   set_owner : (principal) -> (Result_1);
+  test_transfer_eth : () -> (Result);
 }

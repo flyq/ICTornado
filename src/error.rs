@@ -20,6 +20,9 @@ pub enum Error {
 
     #[error("invalid public key: {0}")]
     InvalidPublicKey(String),
+
+    #[error("user not init")]
+    UserNotInitialized,
 }
 
 impl From<(RejectionCode, String)> for Error {

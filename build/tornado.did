@@ -1,15 +1,23 @@
+type CoinType = variant { Btc; Evm : nat64 };
+type EcdsaKeyIds = variant {
+  ProductionKey1;
+  TestKeyLocalDevelopment;
+  TestKey1;
+};
 type Error = variant {
   Internal : text;
+  UserNotInitialized;
   NotAuthorized;
+  InvalidPublicKey : text;
   CallError : text;
   StableError : text;
 };
-type InitData = record { owner : principal };
-type Result = variant { Ok; Err : Error };
-type Result_1 = variant { Ok : text; Err : Error };
+type InitData = record { owner : principal; ecdsa_env : EcdsaKeyIds };
+type Result = variant { Ok : text; Err : Error };
+type Result_1 = variant { Ok; Err : Error };
 service : (InitData) -> {
+  get_address : (CoinType) -> (Result) query;
   get_owner : () -> (principal) query;
-  set_owner : (principal) -> (Result);
-  test_get_pubkey : () -> (Result_1);
-  test_get_sign : () -> (Result_1);
+  init_user : () -> (Result);
+  set_owner : (principal) -> (Result_1);
 }

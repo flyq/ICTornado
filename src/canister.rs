@@ -4,6 +4,7 @@ use ic_exports::candid::Principal;
 use ic_exports::ic_kit::ic;
 
 use crate::error::{Error, Result};
+use crate::state::ecdsa::eth::EthWallet;
 use crate::state::ecdsa::{CoinType, EcdsaKeyIds, Signer};
 use crate::state::{Settings, State};
 
@@ -24,7 +25,7 @@ impl TornadoCanister {
     pub fn init(&mut self, init_data: InitData) {
         let settings = Settings {
             owner: init_data.owner,
-            ecdsa_env: init_data.ecdsa_env
+            ecdsa_env: init_data.ecdsa_env,
         };
 
         self.state.reset(settings);
@@ -43,20 +44,40 @@ impl TornadoCanister {
     #[update]
     pub fn set_owner(&mut self, owner: Principal) -> Result<()> {
         self.check_owner(ic::caller())?;
-        self.state.config.set_owner(owner);
+        self.state.config.set_owner(owner)?;
         Ok(())
     }
 
     #[update]
-    pub async fn get_address(&mut self, coin_type: CoinType) -> Result<Address> {
-         let caller = ic::caller();
+    pub async fn init_user(&mut self) -> Result<String> {
+        let caller = ic::caller();
         let signer = match self.state.signers.get(ic::caller()) {
             Some(s) => s,
             None => {
-                let s = Signer::new(EcdsaKeyIds::, path)
+                let ecdsa_env = self.state.config.get_ecdsa_env();
+                let s = Signer::new(ecdsa_env, caller.as_slice().to_vec()).await?;
+                self.state.signers.set(caller, s.clone());
+                s
             }
-        }
+        };
+        Ok(hex::encode(signer.public_key()))
+    }
 
+    #[query]
+    pub fn get_address(&self, coin_type: CoinType) -> Result<String> {
+        let signer = self
+            .state
+            .signers
+            .get(ic::caller())
+            .ok_or(Error::UserNotInitialized)?;
+
+        match coin_type {
+            CoinType::Evm(chain_id) => {
+                let wallet = EthWallet::new(signer, chain_id)?;
+                Ok(format!("{:?}", wallet.address()))
+            }
+            CoinType::Btc => Err(Error::Internal("not suppported".to_string())),
+        }
     }
 
     fn check_owner(&self, principal: Principal) -> Result<()> {

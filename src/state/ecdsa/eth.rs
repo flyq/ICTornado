@@ -9,15 +9,16 @@ use crate::state::ecdsa::Signer;
 
 pub struct EthWallet {
     pub signer: Signer,
-    pub address: Option<Address>,
+    pub address: Address,
     pub chain_id: u64,
 }
 
 impl EthWallet {
     pub fn new(signer: Signer, chain_id: u64) -> Result<Self> {
+        let address = public_key_to_address(signer.public_key())?;
         Ok(Self {
             signer,
-            address: None,
+            address,
             chain_id,
         })
     }
@@ -34,6 +35,7 @@ impl EthWallet {
 
         // sign_hash sets `v` to recid + 27, so we need to subtract 27 before normalizing
         sig.v = to_eip155_v(sig.v as u8 - 27, self.chain_id);
+
         Ok(sig)
     }
 
@@ -41,7 +43,7 @@ impl EthWallet {
     async fn sign_hash(&self, hash: H256) -> Result<Signature> {
         let sign = self.signer.sign_hash(hash.0).await?;
 
-        let v = u8::from(0) as u64 + 27;
+        let v = 27;
 
         let r_bytes = &sign[0..32];
         let s_bytes = &sign[32..];
@@ -49,6 +51,10 @@ impl EthWallet {
         let s = U256::from_big_endian(s_bytes);
 
         Ok(Signature { r, s, v })
+    }
+
+    pub fn address(&self) -> Address {
+        self.address
     }
 }
 

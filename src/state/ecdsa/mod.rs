@@ -15,7 +15,7 @@ use crate::state::{decode, encode, StorablePrincipal, MEMORY_MANAGER, SIGNERS_ME
 
 pub mod eth;
 
-#[derive(Deserialize, CandidType)]
+#[derive(Copy, Clone, Deserialize, CandidType)]
 pub enum EcdsaKeyIds {
     TestKeyLocalDevelopment,
     TestKey1,
@@ -28,7 +28,7 @@ pub enum EcdsaKeyIds {
 /// and the other one for backing up the key for better key availability.
 /// https://internetcomputer.org/docs/current/developer-docs/integrations/t-ecdsa/t-ecdsa-how-it-works#ecdsa-keys
 impl EcdsaKeyIds {
-    fn to_key_id(&self) -> EcdsaKeyId {
+    fn to_key_id(self) -> EcdsaKeyId {
         EcdsaKeyId {
             curve: EcdsaCurve::Secp256k1,
             name: match self {
@@ -41,38 +41,38 @@ impl EcdsaKeyIds {
     }
 }
 
-#[derive(Deserialize, CandidType)]
+// if change the struct, need to update the BOUND in Storable impl
+#[derive(Clone, CandidType, Deserialize)]
 pub struct Signer {
     key_id: EcdsaKeyIds,
     path: Vec<u8>,
-    public_key: Option<Vec<u8>>,
-    chain_code: Option<Vec<u8>>,
+    public_key: Vec<u8>,
+    chain_code: Vec<u8>,
 }
 
 impl Signer {
-    pub fn new(key_id: EcdsaKeyIds, path: Vec<u8>) -> Self {
-        Self {
-            key_id,
-            path,
-            public_key: None,
-            chain_code: None,
-        }
-    }
-
-    pub async fn public_key(&mut self) -> Result<Vec<u8>> {
-        if let Some(public_key) = &self.public_key {
-            return Ok(public_key.clone());
-        }
-
+    pub async fn new(key_id: EcdsaKeyIds, path: Vec<u8>) -> Result<Self> {
         let arg = EcdsaPublicKeyArgument {
             canister_id: None,
-            derivation_path: vec![self.path.clone()],
-            key_id: self.key_id.to_key_id(),
+            derivation_path: vec![path.clone()],
+            key_id: key_id.to_key_id(),
         };
         let (res,) = ecdsa_public_key(arg).await?;
-        self.public_key = Some(res.public_key.clone());
-        self.chain_code = Some(res.chain_code);
-        Ok(res.public_key)
+
+        Ok(Self {
+            key_id,
+            path,
+            public_key: res.public_key,
+            chain_code: res.chain_code,
+        })
+    }
+
+    pub fn public_key(&self) -> &[u8] {
+        &self.public_key
+    }
+
+    pub fn chain_code(&self) -> &[u8] {
+        &self.chain_code
     }
 
     pub async fn sign_hash(&self, hash: [u8; 32]) -> Result<Vec<u8>> {
@@ -96,24 +96,29 @@ impl Storable for Signer {
     }
 
     const BOUND: Bound = Bound::Bounded {
-        max_size: 100,
+        max_size: 153,
         is_fixed_size: false,
     };
 }
 
 /// Ethereum Mainnet, Sepolia, BSC, Sol,XRP,ADA, AVAX, DOGE,
 /// DOT, Polygon,Ton, ICP, SHIB, LTC, BCH, ATOM, OPtimism
+#[derive(Clone, CandidType, Deserialize)]
 pub enum CoinType {
     Evm(u64),
     Btc,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub struct Signers {}
 
 impl Signers {
     pub fn reset(&mut self) {
-        SIGNERS.with(|signers| signers.borrow_mut().clear());
+        SIGNERS.with(|signers| {
+            signers.replace(StableBTreeMap::new(
+                MEMORY_MANAGER.with(|m| m.borrow().get(SIGNERS_MEMORY_ID)),
+            ))
+        });
     }
 
     pub fn get(&self, principal: Principal) -> Option<Signer> {

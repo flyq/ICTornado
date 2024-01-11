@@ -8,7 +8,7 @@ use ic_stable_structures::storable::Bound;
 use ic_stable_structures::{DefaultMemoryImpl, Storable};
 
 use crate::state::config::Config;
-use crate::state::ecdsa::Signers;
+use crate::state::ecdsa::{EcdsaKeyIds, Signers};
 
 mod config;
 pub mod ecdsa;
@@ -39,7 +39,7 @@ thread_local! {
 }
 
 /// State settings.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Settings {
     pub owner: Principal,
     pub ecdsa_env: EcdsaKeyIds,

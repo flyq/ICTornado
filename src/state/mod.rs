@@ -8,21 +8,22 @@ use ic_stable_structures::storable::Bound;
 use ic_stable_structures::{DefaultMemoryImpl, Storable};
 
 use crate::state::config::Config;
-use crate::state::ecdsa::{EcdsaKeyIds, Signers};
+use crate::state::ecdsa::{EcdsaKeyIds, Nonces, Signers};
 
 mod config;
 pub mod ecdsa;
 
-const CONFIG_MEMORY_ID: MemoryId = MemoryId::new(0);
-const SIGNERS_MEMORY_ID: MemoryId = MemoryId::new(20);
+const CONFIG_MEMORY_ID: MemoryId = MemoryId::new(1);
+const SIGNERS_MEMORY_ID: MemoryId = MemoryId::new(2);
+const NONCES_MEMORY_ID: MemoryId = MemoryId::new(3);
 
 /// State of a minter canister.
 #[derive(Default)]
 pub struct State {
     /// Minter canister configuration.
     pub config: Config,
-    /// Signers.
     pub signers: Signers,
+    pub nonces: Nonces,
 }
 
 impl State {
@@ -30,6 +31,7 @@ impl State {
     pub fn reset(&mut self, settings: Settings) {
         self.config.reset(settings);
         self.signers.reset();
+        self.nonces.reset();
     }
 }
 
@@ -65,7 +67,7 @@ impl Storable for StorablePrincipal {
 
     const BOUND: Bound = Bound::Bounded {
         max_size: 29,
-        is_fixed_size: true,
+        is_fixed_size: false,
     };
 }
 

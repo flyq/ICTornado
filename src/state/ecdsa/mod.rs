@@ -11,7 +11,9 @@ use ic_stable_structures::storable::Bound;
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, Storable};
 
 use crate::error::Result;
-use crate::state::{decode, encode, StorablePrincipal, MEMORY_MANAGER, SIGNERS_MEMORY_ID};
+use crate::state::{
+    decode, encode, StorablePrincipal, MEMORY_MANAGER, NONCES_MEMORY_ID, SIGNERS_MEMORY_ID,
+};
 
 pub mod eth;
 
@@ -134,6 +136,60 @@ impl Signers {
     }
 }
 
+#[derive(Clone, CandidType, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PrincipalChainIdKey(pub Principal, pub u64); // user + chain id
+
+impl Default for PrincipalChainIdKey {
+    fn default() -> Self {
+        Self(Principal::anonymous(), 0)
+    }
+}
+
+impl Storable for PrincipalChainIdKey {
+    fn to_bytes(&self) -> Cow<[u8]> {
+        encode(&self).into()
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        decode(bytes.as_ref())
+    }
+
+    const BOUND: Bound = Bound::Bounded {
+        max_size: 29,
+        is_fixed_size: false,
+    };
+}
+
+#[derive(Default, Clone, Copy)]
+pub struct Nonces {}
+
+impl Nonces {
+    pub fn reset(&mut self) {
+        NONCES.with(|nonces| {
+            nonces.replace(StableBTreeMap::new(
+                MEMORY_MANAGER.with(|m| m.borrow().get(NONCES_MEMORY_ID)),
+            ))
+        });
+    }
+
+    pub fn get(&self, principal: Principal, chain_id: u64) -> Option<u64> {
+        NONCES.with(|nonces| {
+            nonces
+                .borrow()
+                .get(&PrincipalChainIdKey(principal, chain_id))
+        })
+    }
+
+    pub fn set(&mut self, principal: Principal, chain_id: u64, nonce: u64) {
+        NONCES.with(|nonces| {
+            nonces
+                .borrow_mut()
+                .insert(PrincipalChainIdKey(principal, chain_id), nonce)
+        });
+    }
+}
+
 thread_local! {
     static SIGNERS: RefCell<StableBTreeMap<StorablePrincipal, Signer, VirtualMemory<DefaultMemoryImpl>>> = RefCell::new(StableBTreeMap::init(MEMORY_MANAGER.with(|m| m.borrow().get(SIGNERS_MEMORY_ID))));
+    static NONCES: RefCell<StableBTreeMap<PrincipalChainIdKey, u64, VirtualMemory<DefaultMemoryImpl>>> = RefCell::new(StableBTreeMap::init(MEMORY_MANAGER.with(|m| m.borrow().get(NONCES_MEMORY_ID))))
 }

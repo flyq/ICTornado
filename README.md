@@ -45,5 +45,5 @@ dfx canister call tornado test_transfer_eth
   },
 )
 
-curl https://sepolia.infura.io/v3/5b934af435ef47e0af5d57f25bc77ad0 -X POST --data '{"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":["0xf86c808504e3b2920082520894bd70d89667a3e1bd341ac235259c5f2dde8172a9843b9aca00808401546d71a04d1ec0adac53a1218d3f440e86071cca3d5286daeb1c7428b1637dd59170c3d7a0145021557df06e4a73742e520d3371fd3070ef3131aa8fe2009bdaf880365c06"],"id":1}'
+curl https://sepolia.infura.io/v3/5b934af435ef47e0af5d57f25bc77ad0 -X POST --data '{"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":["0xf86c808504e3b2920082520894bd70d89667a3e1bd341ac235259c5f2dde8172a9843b9aca00808401546d71a0762d15e56fd96cce0798a7595b29c940da7cd89ec39ea03c564ae5499fbf7c96a048fa084b91df27f862389ac8614ce76383db3e7b3d8f4c604d244e66e374afca"],"id":1}'
 
